@@ -2,9 +2,10 @@ version: '3.8'
 
 services:
   php:
+    build: .
+    container_name: php_crud_php
     ports:
       - "8020:8000"
-    build: .
     volumes:
       - .:/app
     depends_on:
@@ -13,6 +14,7 @@ services:
 
   db:
     image: mysql:8
+    container_name: php_crud_db
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: test
@@ -23,14 +25,17 @@ services:
 
   memcached:
     image: memcached:alpine
+    container_name: php_crud_memcached
     ports:
       - "11211:11211"
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    container_name: php_crud_phpmyadmin
     environment:
       PMA_HOST: db
       PMA_USER: root
       PMA_PASSWORD: root
     ports:
       - "8090:80"
+
