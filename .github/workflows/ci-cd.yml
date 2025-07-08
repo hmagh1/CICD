@@ -1,4 +1,4 @@
-name: Full CI/CD + Coverage Enforcer + Azure CD
+name: Full CI/CD + SonarCloud + Azure ZipDeploy
 
 on:
   push:
@@ -83,12 +83,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Azure via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: Deploy to Azure with ZipDeploy
+        uses: azure/webapps-deploy@v2
         with:
-          server: ${{ secrets.AZURE_FTP_HOST }}
-          username: ${{ secrets.AZURE_FTP_USERNAME }}
-          password: ${{ secrets.AZURE_FTP_PASSWORD }}
-          local-dir: ./public/
-          server-dir: /site/wwwroot/
-          protocol: ftps
+          app-name: php-crud-ci
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: ./public
