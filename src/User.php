@@ -18,4 +18,8 @@ class User {
         $pdo = Database::connect();
         $pdo->exec("DELETE FROM users");
     }
+     public static function deleteAll(): void {
+        $pdo = Database::connect();
+        $pdo->exec("DELETE FROM users");
+    }
 }
