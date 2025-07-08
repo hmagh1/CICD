@@ -13,7 +13,7 @@ class User {
         $stmt = $pdo->query("SELECT * FROM users");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
+//test
     public static function deleteAll(): void {
         $pdo = Database::connect();
         $pdo->exec("DELETE FROM users");
