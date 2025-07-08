@@ -46,7 +46,7 @@ jobs:
         run: docker cp php_crud_php:/app/coverage.xml .
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: sonarsource/sonarqube-scan-action@v5.0.0
         with:
           args: >
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
