@@ -1,4 +1,4 @@
-name: PHP CI (Docker Compose)
+name: PHP CI + SonarCloud
 
 on:
   push:
@@ -36,8 +36,18 @@ jobs:
       - name: Fix PHPUnit permission
         run: docker exec php_crud_php chmod +x vendor/bin/phpunit
 
-      - name: Run PHPUnit tests
-        run: docker exec php_crud_php vendor/bin/phpunit tests --testdox
+      - name: Run PHPUnit with coverage
+        run: |
+          docker exec php_crud_php vendor/bin/phpunit --coverage-clover coverage.xml
+
+      - name: Copy coverage report to host
+        run: docker cp php_crud_php:/app/coverage.xml .
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        with:
+          args: >
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
       - name: Stop containers
         if: always()
