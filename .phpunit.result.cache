@@ -1,0 +1,1 @@
+{"version":1,"defects":[],"times":{"ApiTest::testUserCrudFlow":0.305,"UserIntegrationTest::testCreateUser":0.061,"UserValidatorTest::testValidEmail":0.019}}

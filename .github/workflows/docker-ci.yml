@@ -1,0 +1,49 @@
+name: PHP CI (Docker Compose)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: docker:20.10.16
+        options: --privileged
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Build and run containers
+        run: docker-compose up -d --build
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            docker exec php_crud_with_tests-db-1 mysqladmin ping -hlocalhost -uroot -proot && break
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Install Composer dependencies
+        run: docker exec php_crud_with_tests-php-1 php composer.phar install
+
+      - name: Fix PHPUnit permission
+        run: docker exec php_crud_with_tests-php-1 chmod +x vendor/bin/phpunit
+
+      - name: Run PHPUnit tests
+        run: docker exec php_crud_with_tests-php-1 vendor/bin/phpunit tests --testdox
+
+      - name: Stop containers
+        if: always()
+        run: docker-compose down
