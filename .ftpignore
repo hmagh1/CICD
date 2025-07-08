@@ -1,0 +1,11 @@
+.git*
+.github/
+docker-compose.yml
+Dockerfile
+tests/
+coverage.xml
+phpunit.xml
+vendor/bin/phpunit
+composer.phar
+*.log
+.env

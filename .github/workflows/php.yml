@@ -1,0 +1,74 @@
+name: PHP CI + SonarCloud + Azure CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Build and run containers
+        run: docker-compose up -d --build
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            docker exec php_crud_db mysqladmin ping -hlocalhost -uroot -proot && break
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Install Composer dependencies
+        run: docker exec php_crud_php php composer.phar install
+
+      - name: Fix PHPUnit permission
+        run: docker exec php_crud_php chmod +x vendor/bin/phpunit
+
+      - name: Run PHPUnit with coverage
+        run: |
+          docker exec php_crud_php \
+            env XDEBUG_MODE=coverage \
+            vendor/bin/phpunit --coverage-clover coverage.xml
+
+      - name: Copy coverage report to host
+        run: docker cp php_crud_php:/app/coverage.xml .
+
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarqube-scan-action@v5.0.0
+        with:
+          args: >
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      - name: Stop containers
+        if: always()
+        run: docker-compose down
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Azure via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.AZURE_FTP_HOST }}
+          username: ${{ secrets.AZURE_FTP_USERNAME }}
+          password: ${{ secrets.AZURE_FTP_PASSWORD }}
+          local-dir: ./public
+          server-dir: /site/wwwroot
