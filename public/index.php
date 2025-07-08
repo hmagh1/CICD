@@ -24,8 +24,10 @@ if ($user !== $expectedUser || $pass !== $expectedPass) {
 // Logique principale
 require_once __DIR__ . '/../src/User.php';
 
+// Récupération et nettoyage du chemin
 $method = $_SERVER['REQUEST_METHOD'];
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+$path = preg_replace('#^/(index\.php|public)#', '', $path);
 
 // Routes
 if ($method === 'GET' && $path === '/users') {
