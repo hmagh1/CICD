@@ -51,6 +51,24 @@ jobs:
           args: >
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
+      - name: Enforce 75% test coverage on new code
+        run: |
+          echo "Checking coverage on new code via SonarCloud API..."
+          curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/measures/component?component=hmagh1_CICD&metricKeys=new_coverage" \
+            | jq -r '.component.measures[0].value' > coverage.txt
+
+          COVERAGE=$(cat coverage.txt)
+          echo "SonarCloud reports coverage on new code: $COVERAGE%"
+
+          COVERAGE_INT=${COVERAGE%.*}
+          if [ "$COVERAGE_INT" -lt 75 ]; then
+            echo "❌ Coverage is below 75%! PR will be rejected."
+            exit 1
+          else
+            echo "✅ Coverage is acceptable."
+          fi
+
       - name: Stop containers
         if: always()
         run: docker-compose down
