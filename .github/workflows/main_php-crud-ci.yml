@@ -30,9 +30,9 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
 
-      # ✅ Zip uniquement le contenu de public/
+      # ✅ Zip uniquement le contenu de public/ (pas le dossier lui-même)
       - name: Zip artifact for deployment
-        run: cd public && zip -r ../release.zip . 
+        run: zip -r release.zip public/*
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -69,4 +69,4 @@ jobs:
         with:
           app-name: 'php-crud-ci'
           slot-name: 'Production'
-          package: .
+          package: release.zip
