@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  php:
+    ports:
+      - "8020:8000"
+    build: .
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - memcached
+
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  memcached:
+    image: memcached:alpine
+    ports:
+      - "11211:11211"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8080:80"
