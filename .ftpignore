@@ -1,11 +1,45 @@
+# Ne pas déployer les fichiers/dossiers suivants
+
+# Fichiers Git
 .git*
 .github/
+
+# CI/CD et conteneurisation
 docker-compose.yml
 Dockerfile
+
+# Tests et couverture
 tests/
 coverage.xml
 phpunit.xml
 vendor/bin/phpunit
+
+# Fichiers de développement uniquement
 composer.phar
-*.log
 .env
+# Ne pas déployer les fichiers/dossiers suivants
+
+# Fichiers Git
+.git*
+.github/
+
+# CI/CD et conteneurisation
+docker-compose.yml
+Dockerfile
+
+# Tests et couverture
+tests/
+coverage.xml
+phpunit.xml
+vendor/bin/phpunit
+
+# Fichiers de développement uniquement
+composer.phar
+.env
+*.log
+*.md
+.deploy-test.php
+
+# Éventuels fichiers de cache
+*.cache
+*.lock
