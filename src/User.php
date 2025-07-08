@@ -18,4 +18,9 @@ class User {
         $pdo = Database::connect();
         $pdo->exec("DELETE FROM users");
     }
+    // src/User.php
+public static function unusedMethod() {
+    return "I am not covered";
+}
+
 }
