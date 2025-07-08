@@ -38,8 +38,9 @@ jobs:
 
       - name: Run PHPUnit with coverage
         run: |
-          docker exec php_crud_php vendor/bin/phpunit \
-            --coverage-clover coverage.xml
+          docker exec php_crud_php \
+            env XDEBUG_MODE=coverage \
+            vendor/bin/phpunit --coverage-clover coverage.xml
 
       - name: Copy coverage report to host
         run: docker cp php_crud_php:/app/coverage.xml .
