@@ -62,9 +62,10 @@ jobs:
       # ✅ Clean wwwroot by deploying an empty zip
       - name: Empty deploy to clean wwwroot
         run: |
-          mkdir empty && cd empty
-          zip -r ../empty.zip .
-        shell: bash
+          mkdir empty
+          echo "cleanup.txt" > empty/.delete_me
+          zip -r empty.zip empty
+
 
       - name: Deploy empty zip to clean wwwroot
         uses: azure/webapps-deploy@v3
