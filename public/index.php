@@ -24,10 +24,11 @@ if ($user !== $expectedUser || $pass !== $expectedPass) {
 // Logique principale
 require_once __DIR__ . '/../src/User.php';
 
-// Récupération et nettoyage du chemin
 $method = $_SERVER['REQUEST_METHOD'];
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-$path = preg_replace('#^/(index\.php|public)#', '', $path);
+
+// ⚠️ Corrige le path si l'app est dans une sous-racine
+$path = preg_replace('#^/index\.php#', '', $path);
 
 // Routes
 if ($method === 'GET' && $path === '/users') {
@@ -55,6 +56,5 @@ if ($method === 'DELETE' && $path === '/users') {
     exit;
 }
 
-// Route inconnue
 http_response_code(404);
 echo json_encode(['error' => 'Not found']);
