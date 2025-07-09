@@ -1,39 +1,43 @@
-name: Build and Deploy PHP CRUD App to Azure
+name: Build and deploy PHP app to Azure Web App - php-crud-ci
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 env:
-  AZURE_APP_NAME: php-crud-ci
-  AZURE_RESOURCE_GROUP: testphp
-  AZURE_KUDU_API: https://php-crud-ci.scm.azurewebsites.net/api/command
+  AZURE_APP_NAME: php-crud-ci-bzdgg9dtfza2feds
+  AZURE_KUDU_API: https://php-crud-ci-bzdgg9dtfza2feds.scm.azurewebsites.net/api/command
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.4'
 
-      - name: Validate & Install Composer
-        run: |
-          if [ -f composer.json ]; then
-            composer validate --no-check-publish
-            composer install --prefer-dist --no-progress
-          fi
+      - name: Check if composer.json exists
+        id: check_files
+        uses: andstor/file-existence-action@v1
+        with:
+          files: 'composer.json'
 
-      - name: Zip public/ folder
+      - name: Run composer install if composer.json exists
+        if: steps.check_files.outputs.files_exists == 'true'
+        run: composer validate --no-check-publish && composer install --prefer-dist --no-progress
+
+      - name: Zip contents of public/
         run: cd public && zip -r ../release.zip .
 
-      - name: Upload release artifact
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: php-app
@@ -42,24 +46,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
-      - name: Download release artifact
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: php-app
 
-      - name: Unzip for deployment
+      - name: Unzip artifact
         run: unzip release.zip
-
-      - name: Clean Azure wwwroot via Kudu API
-        run: |
-          curl -X POST "$AZURE_KUDU_API" \
-            -u ${{ secrets.KUDU_USERNAME }}:${{ secrets.KUDU_PASSWORD }} \
-            -H "Content-Type: application/json" \
-            -d '{"command": "rm -rf /home/site/wwwroot/*"}'
-        env:
-          AZURE_KUDU_API: ${{ env.AZURE_KUDU_API }}
 
       - name: Azure Login
         uses: azure/login@v2
@@ -67,6 +65,13 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1A9AEDCC55254EDEB3C612C3BABEA919 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6696C4A689164977A7C9EB9A6EFCC2E0 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22A8D8E1343E4135B440D8DEC07AD184 }}
+
+      - name: Purge wwwroot via Kudu API
+        run: |
+          curl -X POST "$AZURE_KUDU_API" \
+            -u ${{ secrets.KUDU_USERNAME }}:${{ secrets.KUDU_PASSWORD }} \
+            -H "Content-Type: application/json" \
+            -d '{"command": "rm -rf /home/site/wwwroot/*"}'
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
