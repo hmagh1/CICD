@@ -33,7 +33,11 @@ jobs:
         run: cd public && zip -r ../release.zip .
 
       - name: Create empty zip to clear wwwroot
-        run: zip -r empty.zip . -x "*"
+        run: |
+            mkdir empty-folder
+            cd empty-folder
+            zip -r ../empty.zip .
+
 
       - name: Upload artifacts for deployment
         uses: actions/upload-artifact@v4
