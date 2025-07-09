@@ -1,66 +1,120 @@
-name: Build and deploy PHP app to Azure Web App - php-crud-ci
+name: Full CI/CD Pipeline for PHP CRUD on Azure
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-
-      - name: Run composer install if composer.json exists
+      - name: Set up Docker Compose
         run: |
-          if [ -f "composer.json" ]; then
-            composer validate --no-check-publish
-            composer install --prefer-dist --no-progress
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Build and run containers
+        run: docker-compose up -d --build
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            docker exec php_crud_db mysqladmin ping -hlocalhost -proot && break
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Install Composer dependencies
+        run: docker exec php_crud_php php composer.phar install
+
+      - name: Fix PHPUnit permission
+        run: docker exec php_crud_php chmod +x vendor/bin/phpunit
+
+      - name: Run PHPUnit with coverage
+        run: |
+          docker exec php_crud_php \
+            env XDEBUG_MODE=coverage \
+            vendor/bin/phpunit --coverage-clover coverage.xml
+
+      - name: Copy coverage report to host
+        run: docker cp php_crud_php:/app/coverage.xml .
+
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarqube-scan-action@v5.0.0
+        with:
+          args: >
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      - name: Enforce 75% test coverage on new code (only on PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Checking coverage on new code via SonarCloud API..."
+          curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io/api/measures/component?component=hmagh1_CICD&metricKeys=new_coverage" \
+            | jq -r '.component.measures[0].value' > coverage.txt
+
+          COVERAGE=$(cat coverage.txt)
+          echo "SonarCloud reports coverage on new code: $COVERAGE%"
+
+          COVERAGE_INT=${COVERAGE%.*}
+          if [ "$COVERAGE_INT" -lt 75 ]; then
+            echo "❌ Coverage is below 75%! PR will be rejected."
+            exit 1
           else
-            echo "composer.json not found. Skipping install."
+            echo "✅ Coverage is acceptable."
           fi
 
-      # ✅ Zip uniquement le contenu de public/
-      - name: Zip artifact for deployment
-        run: cd public && zip -r ../release.zip . 
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: php-app
-          path: release.zip
+      - name: Stop containers
+        if: always()
+        run: docker-compose down
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build
+    needs: test
     permissions:
       id-token: write
       contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Zip only public folder for deployment
+        run: cd public && zip -r ../release.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-app
+          path: release.zip
+
+      - name: Download artifact from build
         uses: actions/download-artifact@v4
         with:
           name: php-app
 
-      - name: Unzip artifact for deployment
+      - name: Unzip artifact
         run: unzip release.zip
 
-      - name: Login to Azure
+      - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1A9AEDCC55254EDEB3C612C3BABEA919 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6696C4A689164977A7C9EB9A6EFCC2E0 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22A8D8E1343E4135B440D8DEC07AD184 }}
+
+      - name: ⚠️ Clean Azure site/wwwroot
+        run: |
+          az webapp ssh \
+            --name php-crud-ci \
+            --resource-group testphp \
+            --command "rm -rf /home/site/wwwroot/*"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
