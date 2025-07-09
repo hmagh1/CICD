@@ -1,4 +1,4 @@
-name: Clean & Deploy PHP to Azure
+name: Clean and Deploy PHP to Azure Web App - php-crud-ci
 
 on:
   push:
@@ -18,13 +18,13 @@ jobs:
         with:
           php-version: '8.4'
 
-      - name: Install composer deps (if needed)
+      - name: Install composer dependencies
         run: |
           if [ -f "composer.json" ]; then
             composer install --prefer-dist --no-progress
           fi
 
-      - name: Create ZIP from public/
+      - name: Prepare ZIP from public folder
         run: cd public && zip -r ../app.zip .
 
       - name: Upload artifact
@@ -53,9 +53,21 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6696C4A689164977A7C9EB9A6EFCC2E0 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22A8D8E1343E4135B440D8DEC07AD184 }}
 
-      - name: Deploy to Azure
+      - name: Clean wwwroot manually
+        run: |
+          mkdir empty
+          cd empty
+          zip -r ../empty.zip . || echo "Empty zip created"
+        shell: bash
+
+      - name: Deploy empty zip to clean site
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'php-crud-ci'
-          slot-name: 'Production'
+          package: empty.zip
+
+      - name: Deploy actual app
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'php-crud-ci'
           package: app.zip
