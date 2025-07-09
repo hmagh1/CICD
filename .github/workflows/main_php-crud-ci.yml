@@ -1,4 +1,4 @@
-name: Clean & Deploy PHP app to Azure Web App - php-crud-ci
+name: Clean and deploy only public/ to Azure Web App - php-crud-ci
 
 on:
   push:
@@ -7,34 +7,50 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
 
-      - name: Install dependencies (if composer.json exists)
+      - name: Run composer install if composer.json exists
         run: |
           if [ -f "composer.json" ]; then
             composer validate --no-check-publish
             composer install --prefer-dist --no-progress
           fi
 
-      # 🧼 Étape 1 : Nettoyer wwwroot via zip temporaire
-      - name: Create temporary zip with placeholder file
-        run: |
-          mkdir tmp_empty && echo "delete me" > tmp_empty/.delete_me.txt
-          cd tmp_empty
-          zip ../empty.zip .delete_me.txt
+      - name: Zip ONLY public/ folder
+        run: cd public && zip -r ../release.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-app
+          path: release.zip
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: php-app
+
+      - name: Unzip release.zip
+        run: unzip release.zip
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -43,20 +59,24 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6696C4A689164977A7C9EB9A6EFCC2E0 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22A8D8E1343E4135B440D8DEC07AD184 }}
 
-      - name: Deploy empty zip to clear wwwroot
+      # ✅ Clean wwwroot by deploying an empty zip
+      - name: Empty deploy to clean wwwroot
+        run: |
+          mkdir empty && cd empty
+          zip -r ../empty.zip .
+        shell: bash
+
+      - name: Deploy empty zip to clean wwwroot
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'php-crud-ci'
           slot-name: 'Production'
           package: empty.zip
 
-      # 📦 Étape 2 : Zipper le vrai contenu à déployer
-      - name: Zip public folder for deployment
-        run: cd public && zip -r ../release.zip .
-
-      - name: Deploy real application
+      # ✅ Final real deployment
+      - name: Deploy actual app from public/
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'php-crud-ci'
           slot-name: 'Production'
-          package: release.zip
+          package: .
