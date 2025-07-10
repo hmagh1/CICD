@@ -1,4 +1,4 @@
-name: Build and deploy PHP app to Azure Web App - php-crud-ci
+name: Deploy Docker image to Azure Web App - php-crud-ci
 
 on:
   push:
@@ -7,35 +7,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "hassanmagh" --password-stdin
 
-      - name: Run composer install if composer.json exists
+      - name: Build and Push Docker image
         run: |
-          if [ -f "composer.json" ]; then
-            composer validate --no-check-publish
-            composer install --prefer-dist --no-progress
-          else
-            echo "composer.json not found. Skipping install."
-          fi
-
-      #  M-% Étape 1 : déploiement vide pour nettoyer wwwroot
-      - name: Empty deploy to clean wwwroot
-        run: |
-          mkdir empty
-          echo "cleanup.txt" > empty/.delete_me
-          zip -r empty.zip empty
+          docker build -t hassanmagh/php_crud_with_tests:latest .
+          docker push hassanmagh/php_crud_with_tests:latest
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -44,20 +28,8 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6696C4A689164977A7C9EB9A6EFCC2E0 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22A8D8E1343E4135B440D8DEC07AD184 }}
 
-      - name: Deploy empty package
-        uses: azure/webapps-deploy@v3
+      - name: Deploy Docker image to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
           app-name: 'php-crud-ci'
-          slot-name: 'Production'
-          package: empty.zip
-
-      # ✅ Étape 2 : déploiement réel depuis le dossier public/
-      - name: Zip artifact for deployment
-        run: cd public && zip -r ../release.zip .
-
-      - name: Deploy real app from public/
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'php-crud-ci'
-          slot-name: 'Production'
-          package: release.zip
+          images: 'hassanmagh/php_crud_with_tests:latest'
