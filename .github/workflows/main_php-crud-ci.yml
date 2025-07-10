@@ -1,4 +1,4 @@
-name: Deploy Docker image to Azure Web App - php-crud-ci
+name: Build, Push and Deploy PHP Docker App to Azure
 
 on:
   push:
@@ -7,19 +7,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login to Docker Hub
+      - name: Docker login
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "hassanmagh" --password-stdin
 
-      - name: Build and Push Docker image
-        run: |
-          docker build -t hassanmagh/php_crud_with_tests:latest .
-          docker push hassanmagh/php_crud_with_tests:latest
+      - name: Build Docker image
+        run: docker build -t hassanmagh/php_crud_with_tests:latest .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push hassanmagh/php_crud_with_tests:latest
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -28,7 +29,7 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6696C4A689164977A7C9EB9A6EFCC2E0 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22A8D8E1343E4135B440D8DEC07AD184 }}
 
-      - name: Deploy Docker image to Azure Web App
+      - name: Deploy to Azure Web App (using Docker image)
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'php-crud-ci'
