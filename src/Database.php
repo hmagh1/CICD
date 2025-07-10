@@ -4,30 +4,23 @@ class Database {
 
     public static function connect() {
         if (!self::$pdo) {
-            $host = getenv('DB_HOST') ?: 'localhost';
+            $host = getenv('DB_HOST') ?: 'db';
             $db   = getenv('DB_NAME') ?: 'test';
             $user = getenv('DB_USER') ?: 'root';
-            $pass = getenv('DB_PASS') ?: '';
-
-            $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+            $pass = getenv('DB_PASS') ?: 'root';
+            $dsn  = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
             for ($i = 0; $i < 10; $i++) {
                 try {
-                    self::$pdo = new PDO($dsn, $user, $pass, [
-                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                        PDO::ATTR_EMULATE_PREPARES => false,
-                    ]);
-                    break;
+                    self::$pdo = new PDO($dsn, $user, $pass);
+                    return self::$pdo;
                 } catch (PDOException $e) {
-                    error_log("Waiting for database... attempt {$i}");
+                    echo "Waiting for database... attempt {$i}\n";
                     sleep(1);
                 }
             }
 
-            if (!self::$pdo) {
-                throw new PDOException("Database connection failed after 10 attempts.");
-            }
+            throw new PDOException("Database connection failed after 10 attempts.");
         }
 
         return self::$pdo;
