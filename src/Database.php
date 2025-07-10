@@ -4,28 +4,35 @@ class Database {
 
     public static function connect() {
         if (!self::$pdo) {
-            $host = 'db';
-            $db = 'test';
-            $user = 'root';
-            $pass = 'root';
+            // Lire les variables d'environnement ou utiliser des valeurs par défaut
+            $host = getenv('DB_HOST') ?: 'localhost';
+            $db   = getenv('DB_NAME') ?: 'test';
+            $user = getenv('DB_USER') ?: 'root';
+            $pass = getenv('DB_PASS') ?: 'root';
+
             $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 
-            // Tentatives de connexion pendant 10 secondes max
+            // Tentatives de connexion avec délai progressif
             for ($i = 0; $i < 10; $i++) {
                 try {
-                    self::$pdo = new PDO($dsn, $user, $pass);
+                    self::$pdo = new PDO($dsn, $user, $pass, [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                        PDO::ATTR_EMULATE_PREPARES => false,
+                    ]);
                     break;
                 } catch (PDOException $e) {
-                    echo "Waiting for database... attempt {$i}\n";
+                    error_log("Waiting for database... attempt {$i}");
                     sleep(1);
                 }
             }
 
-            // Si toujours pas connecté, lancer une exception normale
+            // Dernière tentative ou lancer une exception si échec
             if (!self::$pdo) {
-                self::$pdo = new PDO($dsn, $user, $pass);
+                throw new PDOException("Database connection failed after 10 attempts.");
             }
         }
+
         return self::$pdo;
     }
 }
