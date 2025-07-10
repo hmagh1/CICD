@@ -21,6 +21,15 @@ if ($user !== $expectedUser || $pass !== $expectedPass) {
     exit;
 }
 
+// 🔍 DEBUG : Afficher les variables d'environnement (à retirer après test)
+echo json_encode([
+    'DB_HOST' => getenv('DB_HOST'),
+    'DB_NAME' => getenv('DB_NAME'),
+    'DB_USER' => getenv('DB_USER'),
+    'DB_PASS' => getenv('DB_PASS'),
+]);
+exit;
+
 // Inclure la logique utilisateur
 require_once __DIR__ . '/../src/User.php';
 
